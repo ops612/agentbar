@@ -73,6 +73,10 @@ Background jobs, subagents, Claude.app, and Codex.app are ignored.
 
 Click-to-focus uses AppleScript for Terminal and iTerm. macOS may ask for Automation permission the first time you click a row.
 
+## Contributing
+
+No pull requests — the code is written by an agent, and PRs are closed automatically. Instead, [open a Prompt issue](../../issues/new?template=prompt.yml) with the prompt you'd give the agent. Good prompts get run against the codebase and shipped. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT

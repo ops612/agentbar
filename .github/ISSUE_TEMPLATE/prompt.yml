@@ -1,0 +1,23 @@
+name: Prompt
+description: Suggest a feature or fix by writing the prompt you'd give the agent
+labels: [prompt]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AgentBar doesn't take pull requests — it takes prompts. Write what you'd tell the agent. Good prompts get run against the codebase and shipped.
+  - type: textarea
+    id: prompt
+    attributes:
+      label: The prompt
+      description: What would you tell the agent to build or fix? Describe the behavior you want, not the implementation.
+      placeholder: "When every session has been idle for more than 30 minutes, dim the menu bar icon."
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context (optional)
+      description: Anything the agent should know — your setup, what you tried, screenshots.
+    validations:
+      required: false
