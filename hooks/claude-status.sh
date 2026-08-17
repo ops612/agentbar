@@ -23,6 +23,22 @@ STATUS_DIR="$HOME/.claude/session-status"
 mkdir -p "$STATUS_DIR"
 chmod 700 "$STATUS_DIR" 2>/dev/null || true
 
+# A session killed outright never reaches SessionEnd, so its sidecar is left
+# behind. Sweep dead pids when a session starts — cheap, and bounded by the
+# number of files already there.
+if [ "$event" = "session_start" ]; then
+  for f in "$STATUS_DIR"/*.json; do
+    [ -f "$f" ] || continue
+    dead_pid=$(basename "$f" .json)
+    case "$dead_pid" in
+      ''|*[!0-9]*|0*) continue ;;
+    esac
+    # ps, not `kill -0`: kill reports EPERM as failure for a live process
+    # owned by someone else, which would delete a sidecar that is still good.
+    ps -p "$dead_pid" >/dev/null 2>&1 || rm -f "$f"
+  done
+fi
+
 # Claude keys session files by pid; find the one holding this session_id.
 pid=""
 for f in "$SESSIONS_DIR"/*.json; do
