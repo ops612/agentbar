@@ -85,7 +85,20 @@ mkdir -p "$HOME/.codex/hooks" "$HOME/.codex/session-status"
 chmod 700 "$HOME/.codex/hooks" "$HOME/.codex/session-status"
 cp "$ROOT/hooks/codex-status.sh" "$HOME/.codex/hooks/codex-status.sh"
 chmod 700 "$HOME/.codex/hooks/codex-status.sh"
-python3 - "$ROOT/hooks/codex-agent-bar.json" "$HOME/.codex/hooks.json" "$HOME" <<'PY'
+
+# Claude publishes ~/.claude/sessions/<pid>.json but leaves out `status` for
+# desktop-app sessions, so AgentBar needs a hook here too. Hooks live in
+# settings.json alongside unrelated keys — merge, never overwrite.
+mkdir -p "$HOME/.claude/hooks" "$HOME/.claude/session-status"
+chmod 700 "$HOME/.claude/session-status"
+cp "$ROOT/hooks/claude-status.sh" "$HOME/.claude/hooks/claude-status.sh"
+chmod 700 "$HOME/.claude/hooks/claude-status.sh"
+if [ -f "$HOME/.claude/settings.json" ] && [ ! -f "$HOME/.claude/settings.json.agentbar-bak" ]; then
+  cp "$HOME/.claude/settings.json" "$HOME/.claude/settings.json.agentbar-bak"
+fi
+
+merge_hooks() {
+python3 - "$1" "$2" "$HOME" <<'PY'
 import json, sys
 
 src_path, dest_path, home = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -132,6 +145,10 @@ with open(dest_path, "w") as fh:
     json.dump(existing, fh, indent=2)
     fh.write("\n")
 PY
+}
+
+merge_hooks "$ROOT/hooks/codex-agent-bar.json" "$HOME/.codex/hooks.json"
+merge_hooks "$ROOT/hooks/claude-agent-bar.json" "$HOME/.claude/settings.json"
 
 open "$APP"
 echo "launched $APP  AgentBar ${VERSION} (${BUILD})"

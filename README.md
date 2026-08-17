@@ -42,7 +42,7 @@ The first launch may need a right-click → **Open** because of Gatekeeper (ad-h
 |---|---|
 | **Grok** | Copies `~/.grok/hooks/grok-status.sh` and `agent-bar.json`. Restart existing Groks, or press `r` in `/hooks`. |
 | **Codex** | Copies `~/.codex/hooks/codex-status.sh` and merges AgentBar handlers into `~/.codex/hooks.json` (existing hooks stay). In Codex, open `/hooks` and trust the new AgentBar commands. |
-| **Claude Code** | Nothing. AgentBar reads `~/.claude/sessions/<pid>.json` that Claude already writes. |
+| **Claude Code** | Copies `~/.claude/hooks/claude-status.sh` and merges AgentBar handlers into `~/.claude/settings.json` (existing settings stay; a one-time `settings.json.agentbar-bak` is kept). Terminal CLIs need no hook — `~/.claude/sessions/<pid>.json` already carries `status` — but desktop-app sessions omit it. Restart existing sessions to pick the hook up. |
 
 Launch at login is on by default. Toggle it from the menu.
 
@@ -65,7 +65,7 @@ Dev build — leaves the `.app` in `.build/`, does not copy to `~/Applications`:
 
 Menu-bar only. No Dock icon, no window, no network. It polls about once a second.
 
-- **Claude** — live interactive CLIs from `~/.claude/sessions/<pid>.json`
+- **Claude** — live interactive sessions from `~/.claude/sessions/<pid>.json`, falling back to a sidecar under `~/.claude/session-status/` for sessions that publish no `status` of their own
 - **Grok** — `~/.grok/active_sessions.json` plus a small sidecar written by the Grok hook
 - **Codex** — sidecars written by the Codex hook under `~/.codex/session-status/`
 

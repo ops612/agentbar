@@ -21,8 +21,8 @@ enum SessionFocus {
             if !selectITermTab(device: session.ttyDevice) {
                 activate(appName: "iTerm", cwd: nil)
             }
-        case .app(let name):
-            activate(appName: name, cwd: session.cwd)
+        case .app(let name, let passCwd):
+            activate(appName: name, cwd: passCwd ? session.cwd : nil)
         case .unknown:
             if selectTerminalTab(device: session.ttyDevice) { return }
             if selectITermTab(device: session.ttyDevice) { return }
@@ -35,7 +35,9 @@ enum SessionFocus {
     private enum Host {
         case terminal
         case iterm
-        case app(String)
+        /// `passCwd` opens the editor on the session folder. Claude Desktop treats a path
+        /// argument as something to open, so it is activated bare.
+        case app(String, passCwd: Bool)
         case unknown
     }
 
@@ -51,13 +53,15 @@ enum SessionFocus {
     }
 
     private static func host(fromCommand command: String) -> Host? {
-        if command.contains("Visual Studio Code.app") { return .app("Visual Studio Code") }
-        if command.contains("Code - Insiders.app") { return .app("Code - Insiders") }
-        if command.contains("Cursor.app") { return .app("Cursor") }
-        if command.contains("Windsurf.app") { return .app("Windsurf") }
-        if command.contains("Zed.app") { return .app("Zed") }
-        if command.contains("Warp.app") { return .app("Warp") }
-        if command.contains("Ghostty.app") { return .app("Ghostty") }
+        if command.contains("Visual Studio Code.app") { return .app("Visual Studio Code", passCwd: true) }
+        if command.contains("Code - Insiders.app") { return .app("Code - Insiders", passCwd: true) }
+        if command.contains("Cursor.app") { return .app("Cursor", passCwd: true) }
+        if command.contains("Windsurf.app") { return .app("Windsurf", passCwd: true) }
+        if command.contains("Zed.app") { return .app("Zed", passCwd: true) }
+        if command.contains("Warp.app") { return .app("Warp", passCwd: true) }
+        if command.contains("Ghostty.app") { return .app("Ghostty", passCwd: true) }
+        // Desktop-app sessions have no tty; activate the app rather than opening cwd in Finder.
+        if command.contains("/Claude.app") { return .app("Claude", passCwd: false) }
         if command.contains("iTerm2.app") || command.contains("iTerm.app") { return .iterm }
         if command.contains("Terminal.app") { return .terminal }
         return nil
@@ -144,7 +148,7 @@ enum SessionFocus {
 
     private static func ttyNeedle(_ device: String) -> String? {
         let trimmed = device.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty || trimmed == "??" || trimmed == "—" { return nil }
+        if trimmed.isEmpty || trimmed == "??" || trimmed == Mapping.noTTY { return nil }
         return trimmed
     }
 

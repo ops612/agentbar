@@ -1,8 +1,10 @@
+import Darwin
 import Foundation
 
 struct Scanner {
     let home: URL
     let claudeSessionsDir: URL
+    let claudeStatusDir: URL
     let grokRosterFile: URL
     let grokStatusDir: URL
     let codexStatusDir: URL
@@ -10,6 +12,7 @@ struct Scanner {
     init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.home = home
         self.claudeSessionsDir = home.appendingPathComponent(".claude/sessions")
+        self.claudeStatusDir = home.appendingPathComponent(".claude/session-status")
         self.grokRosterFile = home.appendingPathComponent(".grok/active_sessions.json")
         self.grokStatusDir = home.appendingPathComponent(".grok/session-status")
         self.codexStatusDir = home.appendingPathComponent(".codex/session-status")
@@ -38,7 +41,8 @@ struct Scanner {
                     tty: Mapping.normalizeTTY(proc.tty),
                     ttyDevice: proc.tty,
                     status: Mapping.claudeStatus(candidate.status),
-                    folder: Mapping.folderLabel(cwd: candidate.cwd, home: home.path)
+                    folder: Mapping.folderLabel(cwd: candidate.cwd, home: home.path),
+                    name: candidate.name
                 )
             )
         }
@@ -106,9 +110,27 @@ struct Scanner {
             let cwd = json["cwd"] as? String ?? home.path
             let status = json["status"] as? String
             let sessionId = json["sessionId"] as? String ?? json["session_id"] as? String ?? ""
-            result.append(ClaudeCandidate(pid: pid, sessionId: sessionId, cwd: cwd, status: status))
+            let name = json["name"] as? String ?? ""
+            // Desktop-app sessions omit `status`; the AgentBar hook supplies it.
+            let resolved = status ?? sidecarStatus(pid: pid, sessionId: sessionId)
+            result.append(
+                ClaudeCandidate(pid: pid, sessionId: sessionId, cwd: cwd, status: resolved, name: name)
+            )
         }
         return result
+    }
+
+    /// Status written by the AgentBar Claude hook. Ignored when the sidecar belongs to a
+    /// different session that has since reused the pid.
+    private func sidecarStatus(pid: Int32, sessionId: String) -> String? {
+        let file = claudeStatusDir.appendingPathComponent("\(pid).json")
+        guard let json = readCappedObject(at: file) else { return nil }
+        if !sessionId.isEmpty,
+           let sidecarSession = json["session_id"] as? String,
+           sidecarSession != sessionId {
+            return nil
+        }
+        return json["status"] as? String
     }
 
     private func readGrokCandidates() -> [GrokCandidate] {
@@ -277,6 +299,9 @@ private struct ClaudeCandidate {
     let sessionId: String
     let cwd: String
     let status: String?
+    /// Claude's own session name. The only thing separating desktop sessions,
+    /// which share a cwd and have no tty.
+    let name: String
 }
 
 private struct GrokCandidate {
@@ -308,7 +333,10 @@ enum ProcessTable {
         let list = pids.map(String.init).joined(separator: ",")
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/ps")
-        proc.arguments = ["-o", "pid=,tty=,comm=,args=", "-p", list]
+        // No `comm=`: ps pads it to a fixed 16-char column, so an executable under a
+        // path with a space (~/Library/Application Support/...) both truncates and
+        // steals whitespace-split fields from args. proc_pidpath gives the real path.
+        proc.arguments = ["-o", "pid=,tty=,args=", "-p", list]
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = Pipe()
@@ -324,13 +352,24 @@ enum ProcessTable {
         for line in text.split(whereSeparator: \.isNewline) {
             let raw = String(line).trimmingCharacters(in: .whitespaces)
             guard !raw.isEmpty else { continue }
-            let parts = raw.split(maxSplits: 3, omittingEmptySubsequences: true, whereSeparator: \.isWhitespace)
-            guard parts.count >= 3, let pid = Int32(parts[0]) else { continue }
+            let parts = raw.split(maxSplits: 2, omittingEmptySubsequences: true, whereSeparator: \.isWhitespace)
+            guard parts.count >= 2, let pid = Int32(parts[0]) else { continue }
             let tty = String(parts[1])
-            let comm = String(parts[2])
-            let args = parts.count == 4 ? String(parts[3]) : comm
-            result[pid] = ProcInfo(pid: pid, tty: tty, comm: comm, args: args)
+            // args keeps its spaces — only pid and tty are split off the front.
+            let args = parts.count == 3 ? String(parts[2]) : ""
+            let path = executablePath(pid: pid)
+            let comm = path.isEmpty ? String(args.split(whereSeparator: \.isWhitespace).first ?? "") : path
+            result[pid] = ProcInfo(pid: pid, tty: tty, comm: comm, args: args.isEmpty ? comm : args)
         }
         return result
+    }
+
+    /// Full executable path for a pid, spaces intact. Empty when the process is gone
+    /// or owned by another user.
+    private static func executablePath(pid: Int32) -> String {
+        var buffer = [CChar](repeating: 0, count: Int(4 * MAXPATHLEN))
+        let written = proc_pidpath(pid, &buffer, UInt32(buffer.count))
+        guard written > 0 else { return "" }
+        return String(cString: buffer)
     }
 }

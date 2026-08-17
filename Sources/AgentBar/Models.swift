@@ -39,6 +39,8 @@ struct LiveSession: Identifiable, Equatable, Comparable {
     let ttyDevice: String
     let status: SessionStatus
     let folder: String
+    /// Agent-side session name, when the tool publishes one. Empty for Grok and Codex.
+    var name: String = ""
     /// Set when this session just flipped to idle. Nil once parked or dismissed.
     var readySince: Date? = nil
 
@@ -57,12 +59,18 @@ struct LiveSession: Identifiable, Equatable, Comparable {
         } else {
             word = displayStatus.rawValue
         }
-        return "\(tool.displayName)  \(folder)  ·  \(tty)  ·  \(word)"
+        return "\(tool.displayName)  \(folder)  ·  \(handle)  ·  \(word)"
+    }
+
+    /// The tty, or the session name when there is no tty (desktop-app sessions).
+    var handle: String {
+        if tty != Mapping.noTTY { return tty }
+        return name.isEmpty ? tty : name
     }
 
     static func < (lhs: LiveSession, rhs: LiveSession) -> Bool {
         if lhs.folder != rhs.folder { return lhs.folder < rhs.folder }
-        if lhs.tty != rhs.tty { return lhs.tty < rhs.tty }
+        if lhs.handle != rhs.handle { return lhs.handle < rhs.handle }
         if lhs.tool.rawValue != rhs.tool.rawValue { return lhs.tool.rawValue < rhs.tool.rawValue }
         return lhs.sessionId < rhs.sessionId
     }
@@ -201,9 +209,12 @@ enum Mapping {
         return name.isEmpty ? cwd : name
     }
 
+    /// Shown in place of a tty for sessions that have none.
+    static let noTTY = "—"
+
     static func normalizeTTY(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty || trimmed == "??" { return "—" }
+        if trimmed.isEmpty || trimmed == "??" { return noTTY }
         if trimmed.lowercased().hasPrefix("tty") {
             return String(trimmed.dropFirst(3))
         }
