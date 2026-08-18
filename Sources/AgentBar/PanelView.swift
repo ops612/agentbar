@@ -26,7 +26,7 @@ struct PanelView: View {
             Divider()
             footer
         }
-        .frame(width: 320)
+        .frame(width: 352)
     }
 
     private var header: some View {
@@ -173,19 +173,28 @@ private struct SessionRow: View {
             HStack(spacing: 8) {
                 StatusDot(status: session.displayStatus)
                 VStack(alignment: .leading, spacing: 1) {
+                    // Middle truncation: a long folder name is usually distinguished
+                    // by its tail (…-frontend, …-api), which tail truncation eats.
                     Text(session.folder)
                         .font(.system(size: 12, weight: .medium))
                         .lineLimit(1)
+                        .truncationMode(.middle)
                     Text("\(session.tool.displayName) · \(session.handle)")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-                Spacer(minLength: 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 8)
                 if let age {
                     Text(age)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        // Never let the age be squeezed by a long name — it is a
+                        // fixed narrow column, and the name truncates instead.
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
             .padding(.horizontal, 8)
