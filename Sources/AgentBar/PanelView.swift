@@ -15,8 +15,20 @@ extension SessionStatus {
     var isHollow: Bool { self == .idle }
 }
 
+/// Reports the laid-out height of the session list.
+private struct ContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat { 0 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct PanelView: View {
     @ObservedObject var store: StatusStore
+    /// A ScrollView has no intrinsic height, and the menu bar window offers it
+    /// almost none — left to itself it collapses to a sliver. Measure the rows
+    /// and give the scroll view that height, capped so long lists still scroll.
+    @State private var listHeight: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -77,8 +89,16 @@ struct PanelView: View {
                     }
                 }
                 .padding(.bottom, 6)
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: ContentHeightKey.self, value: geometry.size.height)
+                    }
+                )
             }
-            .frame(maxHeight: 320)
+            .frame(height: min(max(listHeight, 44), 360))
+            .onPreferenceChange(ContentHeightKey.self) { height in
+                listHeight = height
+            }
         }
     }
 
@@ -168,18 +188,26 @@ private struct SessionRow: View {
 
     @State private var hovering = false
 
+    /// Tool, folder and handle. The folder is dropped when it is already the headline.
+    private var subtitle: String {
+        var parts = [session.tool.displayName]
+        if !session.title.isEmpty { parts.append(session.folder) }
+        parts.append(session.handle)
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
         Button(action: focus) {
             HStack(spacing: 8) {
                 StatusDot(status: session.displayStatus)
                 VStack(alignment: .leading, spacing: 1) {
-                    // Middle truncation: a long folder name is usually distinguished
-                    // by its tail (…-frontend, …-api), which tail truncation eats.
-                    Text(session.folder)
+                    // Middle truncation: a long title or folder name is usually
+                    // distinguished by its tail, which tail truncation eats.
+                    Text(session.title.isEmpty ? session.folder : session.title)
                         .font(.system(size: 12, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.middle)
-                    Text("\(session.tool.displayName) · \(session.handle)")
+                    Text(subtitle)
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

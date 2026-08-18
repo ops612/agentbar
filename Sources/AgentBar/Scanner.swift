@@ -5,6 +5,7 @@ struct Scanner {
     let home: URL
     let claudeSessionsDir: URL
     let claudeStatusDir: URL
+    private let titles: TitleIndex
     let grokRosterFile: URL
     let grokStatusDir: URL
     let codexStatusDir: URL
@@ -13,6 +14,7 @@ struct Scanner {
         self.home = home
         self.claudeSessionsDir = home.appendingPathComponent(".claude/sessions")
         self.claudeStatusDir = home.appendingPathComponent(".claude/session-status")
+        self.titles = TitleIndex(home: home)
         self.grokRosterFile = home.appendingPathComponent(".grok/active_sessions.json")
         self.grokStatusDir = home.appendingPathComponent(".grok/session-status")
         self.codexStatusDir = home.appendingPathComponent(".codex/session-status")
@@ -42,7 +44,8 @@ struct Scanner {
                     ttyDevice: proc.tty,
                     status: Mapping.claudeStatus(candidate.status),
                     folder: Mapping.folderLabel(cwd: candidate.cwd, home: home.path),
-                    name: candidate.name
+                    name: candidate.name,
+                    title: titles.title(sessionId: candidate.sessionId)
                 )
             )
         }

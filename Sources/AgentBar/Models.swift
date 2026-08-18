@@ -41,6 +41,8 @@ struct LiveSession: Identifiable, Equatable, Comparable {
     let folder: String
     /// Agent-side session name, when the tool publishes one. Empty for Grok and Codex.
     var name: String = ""
+    /// What the session is about, taken from its transcript. Empty when unknown.
+    var title: String = ""
     /// Set when this session just flipped to idle. Nil once parked or dismissed.
     var readySince: Date? = nil
 
