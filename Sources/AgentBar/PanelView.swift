@@ -185,7 +185,7 @@ private struct SessionRow: View {
                 if let age {
                     Text(age)
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(hovering ? .secondary : .tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(.horizontal, 8)
