@@ -54,12 +54,23 @@ Dev build — leaves the `.app` in `.build/`, does not copy to `~/Applications`:
 
 ## Uninstall
 
-1. Uncheck **Launch at Login** in the menu, then **Quit AgentBar**.
+1. Turn off **Launch at login** in the panel, then **Quit**.
 2. Delete `~/Applications/AgentBar.app`.
 3. Remove `~/.grok/hooks/grok-status.sh` and `~/.grok/hooks/agent-bar.json`.
 4. Remove `~/.codex/hooks/codex-status.sh`. Edit `~/.codex/hooks.json` and delete the AgentBar command entries (paths ending in `codex-status.sh`).
+5. Remove `~/.claude/hooks/claude-status.sh`. Edit `~/.claude/settings.json` and delete the AgentBar command entries (paths ending in `claude-status.sh`), or restore `~/.claude/settings.json.agentbar-bak`.
 
-`~/.grok/session-status` and `~/.codex/session-status` are runtime files. Delete those folders too if you want them gone.
+`~/.grok/session-status`, `~/.codex/session-status` and `~/.claude/session-status` are runtime files. Delete those folders too if you want them gone.
+
+## The panel
+
+Clicking the icon opens a panel rather than a plain menu:
+
+- Sessions grouped by state, each row showing folder, tool, handle, and how long it has held that state
+- Count chips in the header for the states that need attention
+- A filter field, once there are more than three sessions
+- Right-click a row to reveal its folder in Finder or copy its path
+- An optional chime when a session starts waiting on you
 
 ## How it works
 
